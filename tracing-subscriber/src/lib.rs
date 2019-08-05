@@ -28,6 +28,7 @@ macro_rules! try_lock {
     };
 }
 
+pub mod field;
 #[cfg(feature = "filter")]
 pub mod filter;
 pub mod layer;
