@@ -131,7 +131,7 @@ impl<F, T> Format<F, T> {
 
 impl<N, T> FormatEvent<N> for Format<Full, T>
 where
-    N: for<'a> crate::NewVisitor<'a>,
+    N: for<'a> crate::MakeVisitor<&'a mut dyn fmt::Write>,
     T: FormatTime,
 {
     fn format_event(
@@ -146,6 +146,7 @@ where
         let meta = normalized_meta.as_ref().unwrap_or_else(|| event.metadata());
         #[cfg(not(feature = "tracing-log"))]
         let meta = event.metadata();
+
         time::write(&self.timer, writer)?;
         write!(
             writer,
@@ -159,7 +160,7 @@ where
             }
         )?;
         {
-            let mut recorder = ctx.new_visitor(writer, true);
+            let mut recorder = ctx.make_visitor(writer);
             event.record(&mut recorder);
         }
         writeln!(writer)
@@ -168,7 +169,7 @@ where
 
 impl<N, T> FormatEvent<N> for Format<Compact, T>
 where
-    N: for<'a> crate::NewVisitor<'a>,
+    N: for<'a> crate::MakeVisitor<&'a mut dyn fmt::Write>,
     T: FormatTime,
 {
     fn format_event(
@@ -196,7 +197,7 @@ where
             }
         )?;
         {
-            let mut recorder = ctx.new_visitor(writer, true);
+            let mut recorder = ctx.make_visitor(writer);
             event.record(&mut recorder);
         }
         ctx.with_current(|(_, span)| write!(writer, " {}", span.fields()))
@@ -226,12 +227,12 @@ impl<'a> Recorder<'a> {
     }
 }
 
-impl<'a> crate::NewVisitor<'a> for NewRecorder {
+impl<'a> crate::MakeVisitor<&'a mut dyn Write> for NewRecorder {
     type Visitor = Recorder<'a>;
 
     #[inline]
-    fn make(&self, writer: &'a mut dyn Write, is_empty: bool) -> Self::Visitor {
-        Recorder::new(writer, is_empty)
+    fn make_visitor(&self, target: &'a mut dyn Write) -> Self::Visitor {
+        Recorder::new(target, true)
     }
 }
 
@@ -269,10 +270,7 @@ impl<'a, N: 'a> FmtCtx<'a, N> {
 }
 
 #[cfg(feature = "ansi")]
-impl<'a, N> fmt::Display for FmtCtx<'a, N>
-where
-    N: crate::NewVisitor<'a>,
-{
+impl<'a, N> fmt::Display for FmtCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         self.ctx.visit_spans(|_, span| {
@@ -324,10 +322,7 @@ impl<'a, N: 'a> FullCtx<'a, N> {
 }
 
 #[cfg(feature = "ansi")]
-impl<'a, N> fmt::Display for FullCtx<'a, N>
-where
-    N: crate::NewVisitor<'a>,
-{
+impl<'a, N> fmt::Display for FullCtx<'a, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut seen = false;
         let style = if self.ansi {

@@ -28,6 +28,7 @@ ansi = ["ansi_term"]
 [dependencies]
 tracing-core = "0.1.2"
 tracing-log = { version = "0.0.1-alpha.1", optional = true }
+tracing-subscriber = { version = "0.0.1-alpha.2", path = "../tracing-subscriber" }
 ansi_term = { version = "0.11", optional = true }
 regex = "1"
 lazy_static = "1"

@@ -12,9 +12,8 @@
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 #![doc(html_root_url = "https://docs.rs/tracing-f,t/0.0.1-alpha.3")]
 #![cfg_attr(test, deny(warnings))]
-use tracing_core::{field, subscriber::Interest, Event, Metadata};
-
 use std::{any::TypeId, cell::RefCell, fmt, io};
+use tracing_core::{field, subscriber::Interest, Event, Metadata};
 
 pub mod filter;
 pub mod format;
@@ -23,6 +22,7 @@ pub mod time;
 
 #[doc(inline)]
 pub use crate::{filter::Filter, format::FormatEvent, span::Context};
+pub use tracing_subscriber::field::{MakeVisitor, VisitFmt};
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 #[derive(Debug)]
@@ -71,7 +71,7 @@ impl Default for FmtSubscriber {
 
 impl<N, E, F> FmtSubscriber<N, E, F>
 where
-    N: for<'a> NewVisitor<'a>,
+    N: for<'a> MakeVisitor<&'a mut dyn fmt::Write>,
 {
     #[inline]
     fn ctx(&self) -> span::Context<'_, N> {
@@ -92,7 +92,7 @@ where
 
 impl<N, E, F> tracing_core::Subscriber for FmtSubscriber<N, E, F>
 where
-    N: for<'a> NewVisitor<'a> + 'static,
+    N: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
     E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
 {
@@ -187,25 +187,6 @@ where
     }
 }
 
-pub trait NewVisitor<'a> {
-    type Visitor: field::Visit + 'a;
-
-    fn make(&self, writer: &'a mut dyn fmt::Write, is_empty: bool) -> Self::Visitor;
-}
-
-impl<'a, F, R> NewVisitor<'a> for F
-where
-    F: Fn(&'a mut dyn fmt::Write, bool) -> R,
-    R: field::Visit + 'a,
-{
-    type Visitor = R;
-
-    #[inline]
-    fn make(&self, writer: &'a mut dyn fmt::Write, is_empty: bool) -> Self::Visitor {
-        (self)(writer, is_empty)
-    }
-}
-
 // ===== impl Builder =====
 
 impl Default for Builder {
@@ -221,7 +202,7 @@ impl Default for Builder {
 
 impl<N, E, F> Builder<N, E, F>
 where
-    N: for<'a> NewVisitor<'a> + 'static,
+    N: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
     E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
 {
@@ -238,7 +219,7 @@ where
 
 impl<N, L, T, F> Builder<N, format::Format<L, T>, F>
 where
-    N: for<'a> NewVisitor<'a> + 'static,
+    N: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
     F: Filter<N> + 'static,
 {
     /// Use the given `timer` for log message timestamps.
@@ -311,7 +292,7 @@ impl<N, E, F> Builder<N, E, F> {
     /// fields.
     pub fn with_visitor<N2>(self, new_visitor: N2) -> Builder<N2, E, F>
     where
-        N2: for<'a> NewVisitor<'a> + 'static,
+        N2: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
     {
         Builder {
             new_visitor,
@@ -340,7 +321,7 @@ impl<N, E, F> Builder<N, E, F> {
     /// See [`format::Compact`].
     pub fn compact(self) -> Builder<N, format::Format<format::Compact>, F>
     where
-        N: for<'a> NewVisitor<'a> + 'static,
+        N: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
     {
         Builder {
             fmt_event: format::Format::default().compact(),
