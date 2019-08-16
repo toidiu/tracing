@@ -527,7 +527,7 @@ impl fmt::Display for LevelFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::format::NewRecorder;
+    use crate::format::DefaultFields;
     use crate::span::*;
     use tracing_core::field::FieldSet;
     use tracing_core::*;
@@ -545,7 +545,7 @@ mod tests {
     fn callsite_enabled_no_span_directive() {
         let filter = EnvFilter::from("app=debug");
         let store = Store::with_capacity(1);
-        let ctx = Context::new(&store, &NewRecorder);
+        let ctx = Context::new(&store, &DefaultFields);
         let meta = Metadata::new(
             "mySpan",
             "app",
@@ -565,7 +565,7 @@ mod tests {
     fn callsite_off() {
         let filter = EnvFilter::from("app=off");
         let store = Store::with_capacity(1);
-        let ctx = Context::new(&store, &NewRecorder);
+        let ctx = Context::new(&store, &DefaultFields);
         let meta = Metadata::new(
             "mySpan",
             "app",
@@ -585,7 +585,7 @@ mod tests {
     fn callsite_enabled_includes_span_directive() {
         let filter = EnvFilter::from("app[mySpan]=debug");
         let store = Store::with_capacity(1);
-        let ctx = Context::new(&store, &NewRecorder);
+        let ctx = Context::new(&store, &DefaultFields);
         let meta = Metadata::new(
             "mySpan",
             "app",
@@ -605,7 +605,7 @@ mod tests {
     fn callsite_enabled_includes_span_directive_field() {
         let filter = EnvFilter::from("app[mySpan{field=\"value\"}]=debug");
         let store = Store::with_capacity(1);
-        let ctx = Context::new(&store, &NewRecorder);
+        let ctx = Context::new(&store, &DefaultFields);
         let meta = Metadata::new(
             "mySpan",
             "app",
@@ -625,7 +625,7 @@ mod tests {
     fn callsite_disabled_includes_directive_field() {
         let filter = EnvFilter::from("app[{field=\"novalue\"}]=debug");
         let store = Store::with_capacity(1);
-        let ctx = Context::new(&store, &NewRecorder);
+        let ctx = Context::new(&store, &DefaultFields);
         let meta = Metadata::new(
             "mySpan",
             "app",
@@ -645,7 +645,7 @@ mod tests {
     fn callsite_disabled_includes_directive_field_no_value() {
         let filter = EnvFilter::from("app[mySpan{field}]=debug");
         let store = Store::with_capacity(1);
-        let ctx = Context::new(&store, &NewRecorder);
+        let ctx = Context::new(&store, &DefaultFields);
         let meta = Metadata::new(
             "mySpan",
             "app",
@@ -665,7 +665,7 @@ mod tests {
     fn callsite_enabled_includes_span_directive_multiple_fields() {
         let filter = EnvFilter::from("app[mySpan{field=\"value\" field2=2}]=debug");
         let store = Store::with_capacity(1);
-        let ctx = Context::new(&store, &NewRecorder);
+        let ctx = Context::new(&store, &DefaultFields);
         let meta = Metadata::new(
             "mySpan",
             "app",

@@ -25,7 +25,6 @@ pub use self::{env::EnvFilter, reload::ReloadFilter};
 impl<F, N> Filter<N> for F
 where
     F: Fn(&Metadata<'_>, &span::Context<'_, N>) -> bool,
-    N: for<'a> crate::MakeVisitor<&'a mut dyn std::fmt::Write>,
 {
     fn enabled(&self, metadata: &Metadata<'_>, ctx: &span::Context<'_, N>) -> bool {
         (self)(metadata, ctx)

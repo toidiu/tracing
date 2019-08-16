@@ -12,8 +12,8 @@
 //! [`Subscriber`]: https://docs.rs/tracing/latest/tracing/trait.Subscriber.html
 #![doc(html_root_url = "https://docs.rs/tracing-f,t/0.0.1-alpha.3")]
 #![cfg_attr(test, deny(warnings))]
-use std::{any::TypeId, cell::RefCell, fmt, io};
-use tracing_core::{field, subscriber::Interest, Event, Metadata};
+use std::{any::TypeId, cell::RefCell, io};
+use tracing_core::{subscriber::Interest, Event, Metadata};
 
 pub mod filter;
 pub mod format;
@@ -21,17 +21,16 @@ mod span;
 pub mod time;
 
 #[doc(inline)]
-pub use crate::{filter::Filter, format::FormatEvent, span::Context};
-pub use tracing_subscriber::field::{MakeVisitor, VisitFmt};
+pub use crate::{filter::Filter, format::FormatEvent, format::FormatFields, span::Context};
 
 /// A `Subscriber` that logs formatted representations of `tracing` events.
 #[derive(Debug)]
 pub struct FmtSubscriber<
-    N = format::NewRecorder,
+    N = format::DefaultFields,
     E = format::Format<format::Full>,
     F = filter::EnvFilter,
 > {
-    new_visitor: N,
+    fmt_fields: N,
     fmt_event: E,
     filter: F,
     spans: span::Store,
@@ -40,9 +39,12 @@ pub struct FmtSubscriber<
 
 /// Configures and constructs `FmtSubscriber`s.
 #[derive(Debug, Default)]
-pub struct Builder<N = format::NewRecorder, E = format::Format<format::Full>, F = filter::EnvFilter>
-{
-    new_visitor: N,
+pub struct Builder<
+    N = format::DefaultFields,
+    E = format::Format<format::Full>,
+    F = filter::EnvFilter,
+> {
+    fmt_fields: N,
     fmt_event: E,
     filter: F,
     settings: Settings,
@@ -71,11 +73,11 @@ impl Default for FmtSubscriber {
 
 impl<N, E, F> FmtSubscriber<N, E, F>
 where
-    N: for<'a> MakeVisitor<&'a mut dyn fmt::Write>,
+    N: for<'writer> FormatFields<'writer>,
 {
     #[inline]
     fn ctx(&self) -> span::Context<'_, N> {
-        span::Context::new(&self.spans, &self.new_visitor)
+        span::Context::new(&self.spans, &self.fmt_fields)
     }
 }
 
@@ -92,7 +94,7 @@ where
 
 impl<N, E, F> tracing_core::Subscriber for FmtSubscriber<N, E, F>
 where
-    N: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
+    N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
 {
@@ -106,12 +108,12 @@ where
 
     #[inline]
     fn new_span(&self, attrs: &span::Attributes<'_>) -> span::Id {
-        self.spans.new_span(attrs, &self.new_visitor)
+        self.spans.new_span(attrs, &self.fmt_fields)
     }
 
     #[inline]
     fn record(&self, span: &span::Id, values: &span::Record<'_>) {
-        self.spans.record(span, values, &self.new_visitor)
+        self.spans.record(span, values, &self.fmt_fields)
     }
 
     fn record_follows_from(&self, _span: &span::Id, _follows: &span::Id) {
@@ -137,7 +139,7 @@ where
                     &mut b
                 }
             };
-            let ctx = span::Context::new(&self.spans, &self.new_visitor);
+            let ctx = span::Context::new(&self.spans, &self.fmt_fields);
 
             if self.fmt_event.format_event(&ctx, buf, event).is_ok() {
                 // TODO: make the io object configurable
@@ -181,7 +183,7 @@ where
             _ if id == TypeId::of::<Self>() => Some(self as *const Self as *const ()),
             _ if id == TypeId::of::<F>() => Some(&self.filter as *const F as *const ()),
             _ if id == TypeId::of::<E>() => Some(&self.fmt_event as *const E as *const ()),
-            _ if id == TypeId::of::<N>() => Some(&self.new_visitor as *const N as *const ()),
+            _ if id == TypeId::of::<N>() => Some(&self.fmt_fields as *const N as *const ()),
             _ => None,
         }
     }
@@ -193,7 +195,7 @@ impl Default for Builder {
     fn default() -> Self {
         Builder {
             filter: filter::EnvFilter::from_default_env(),
-            new_visitor: format::NewRecorder,
+            fmt_fields: format::DefaultFields,
             fmt_event: format::Format::default(),
             settings: Settings::default(),
         }
@@ -202,13 +204,13 @@ impl Default for Builder {
 
 impl<N, E, F> Builder<N, E, F>
 where
-    N: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
+    N: for<'writer> FormatFields<'writer> + 'static,
     E: FormatEvent<N> + 'static,
     F: Filter<N> + 'static,
 {
     pub fn finish(self) -> FmtSubscriber<N, E, F> {
         FmtSubscriber {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             filter: self.filter,
             spans: span::Store::with_capacity(32),
@@ -219,13 +221,13 @@ where
 
 impl<N, L, T, F> Builder<N, format::Format<L, T>, F>
 where
-    N: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
+    N: for<'writer> FormatFields<'writer> + 'static,
     F: Filter<N> + 'static,
 {
     /// Use the given `timer` for log message timestamps.
     pub fn with_timer<T2>(self, timer: T2) -> Builder<N, format::Format<L, T2>, F> {
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event.with_timer(timer),
             filter: self.filter,
             settings: self.settings,
@@ -235,7 +237,7 @@ where
     /// Do not emit timestamps with log messages.
     pub fn without_time(self) -> Builder<N, format::Format<L, ()>, F> {
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event.without_time(),
             filter: self.filter,
             settings: self.settings,
@@ -268,7 +270,7 @@ where
     /// runtime.
     pub fn with_filter_reloading(self) -> Builder<N, E, filter::ReloadFilter<F, N>> {
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             filter: filter::ReloadFilter::new(self.filter),
             settings: self.settings,
@@ -290,12 +292,12 @@ where
 impl<N, E, F> Builder<N, E, F> {
     /// Sets the Visitor that the subscriber being built will use to record
     /// fields.
-    pub fn with_visitor<N2>(self, new_visitor: N2) -> Builder<N2, E, F>
+    pub fn fmt_fields<N2>(self, fmt_fields: N2) -> Builder<N2, E, F>
     where
-        N2: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
+        N2: for<'writer> FormatFields<'writer> + 'static,
     {
         Builder {
-            new_visitor,
+            fmt_fields: fmt_fields.into(),
             fmt_event: self.fmt_event,
             filter: self.filter,
             settings: self.settings,
@@ -309,7 +311,7 @@ impl<N, E, F> Builder<N, E, F> {
         F2: Filter<N> + 'static,
     {
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event: self.fmt_event,
             filter,
             settings: self.settings,
@@ -321,12 +323,12 @@ impl<N, E, F> Builder<N, E, F> {
     /// See [`format::Compact`].
     pub fn compact(self) -> Builder<N, format::Format<format::Compact>, F>
     where
-        N: for<'a> MakeVisitor<&'a mut dyn fmt::Write> + 'static,
+        N: for<'writer> FormatFields<'writer> + 'static,
     {
         Builder {
             fmt_event: format::Format::default().compact(),
             filter: self.filter,
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             settings: self.settings,
         }
     }
@@ -338,7 +340,7 @@ impl<N, E, F> Builder<N, E, F> {
         E2: FormatEvent<N> + 'static,
     {
         Builder {
-            new_visitor: self.new_visitor,
+            fmt_fields: self.fmt_fields,
             fmt_event,
             filter: self.filter,
             settings: self.settings,
@@ -386,7 +388,7 @@ mod test {
     fn subscriber_downcasts_to_parts() {
         let subscriber = FmtSubscriber::new();
         let dispatch = Dispatch::new(subscriber);
-        assert!(dispatch.downcast_ref::<format::NewRecorder>().is_some());
+        assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
         assert!(dispatch.downcast_ref::<filter::EnvFilter>().is_some());
         assert!(dispatch.downcast_ref::<format::Format>().is_some())
     }
