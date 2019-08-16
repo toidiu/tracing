@@ -11,7 +11,8 @@ status() {
 
 show_changes() {
     status "Since" "$2"
-
+    local tag
+    tag="$1-$2"
     local pretty
     if [[ "$VERBOSE" == "--verbose" ]]; then
         pretty="format:%Cgreen%C(bold)%>($WIDTH)%h%Creset %C(bold)%s%Creset%+b"
@@ -19,5 +20,5 @@ show_changes() {
         pretty="format:%Cgreen%C(bold)%>($WIDTH)%h%Creset %s"
     fi
 
-    git --no-pager log --pretty="$pretty" "$2" -- "$1"
+    git --no-pager log --pretty="$pretty" "$tag"..HEAD -- "$1"
 }

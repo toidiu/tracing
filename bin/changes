@@ -56,11 +56,8 @@ esac
 done
 
 if [ -d "$CRATE" ]; then
-
     if [ -z "$SINCE" ]; then
-        SINCE=$(git tag -l --sort=-version:refname "$CRATE-[0-9]*" | head -n 1)
-    else
-        SINCE="$CRATE-$SINCE"
+        SINCE=$(cd "$CRATE"; cargo pkgid | sed -n 's/.*#\(.*\)/\1/p')
     fi
     show_changes "$CRATE" "$SINCE"
 else
