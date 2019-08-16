@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+set -e
+USAGE="Show changes to a crate since the last tagged release
+
+USAGE:
+    $(basename "$0") [OPTIONS] <CRATE> [VERSION]
+
+OPTIONS:
+    -l, --long      Show long commit messages
+    -v, --verbose   Trace script execution
+    -h, --help      Show this help text and exit"
+
+BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# shellcheck source=utils.sh
+source "$BIN_DIR"/utils.sh
+
+LONG=""
+CRATE=""
+SINCE=""
+
+while [[ $# -gt 0 ]]
+do
+
+case "$1" in
+    -h|--help)
+    echo "$USAGE"
+    exit 0
+    ;;
+    -l|--long)
+    LONG="true"
+    shift
+    ;;
+    -v|--verbose)
+    set +x
+    shift
+    ;;
+    -*)
+    err "unknown flag \"$1\""
+    echo "$USAGE"
+    exit 1
+    ;;
+    *) # crate or version
+    if [ -z "$CRATE" ]; then
+        CRATE="$1"
+    elif [ -z "$SINCE" ]; then
+        SINCE="$1"
+    else
+        err "unknown positional argument \"$1\""
+        echo "$USAGE"
+        exit 1
+    fi
+    shift
+    ;;
+esac
+done
+
+if [ -d "$CRATE" ]; then
+
+    if [ -z "$SINCE" ]; then
+        SINCE=$(git tag -l --sort=-version:refname "$CRATE-[0-9]*" | head -n 1)
+    else
+        SINCE="$CRATE-$SINCE"
+    fi
+    show_changes "$CRATE" "$SINCE"
+else
+    err "no such crate \"$CRATE\""
+    exit 1
+fi
