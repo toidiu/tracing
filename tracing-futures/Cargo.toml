@@ -19,7 +19,7 @@ keywords = ["logging", "tracing", "futures"]
 license = "MIT"
 
 [features]
-default = ["futures-01", "tokio"]
+default = ["futures-01", "tokio", "futures-preview", "std-future"]
 futures-01 = ["futures"]
 std-future = ["pin-utils"]
 futures-preview = ["std-future", "futures-core-preview"]

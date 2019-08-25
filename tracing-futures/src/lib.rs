@@ -120,6 +120,28 @@ impl<T: std::future::Future> std::future::Future for Instrumented<T> {
     }
 }
 
+#[cfg(feature = "futures-preview")]
+#[cfg(feature = "std-future")]
+impl<T: futures_core::stream::Stream> futures_core::stream::Stream for Instrumented<T> {
+    type Item = T::Item;
+
+    fn poll_next(self: Pin<&mut Self>, lw: &mut Context) -> std::task::Poll<Option<Self::Item>> {
+        let span = self.as_ref().span.clone();
+        let _enter = span.enter();
+        let d: () = self.as_mut().inner;
+        d.poll_next(lw)
+    }
+
+    // fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> futures_core::stream::Poll<Option<Self::Item>> {
+    //     let _enter = self.span.enter();
+    //     self.inner.poll_next()
+    // }
+    // fn poll(&mut self) -> futures::Poll<Option<Self::Item>, Self::Error> {
+    //     let _enter = self.span.enter();
+    //     self.inner.poll()
+    // }
+}
+
 #[cfg(feature = "std-future")]
 impl<T: Unpin> Unpin for Instrumented<T> {}
 
