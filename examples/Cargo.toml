@@ -28,7 +28,8 @@ tracing-serde = { path = "../tracing-serde" }
 serde_json = "1.0"
 
 futures = "0.1"
-tokio = "0.1"
+# tokio = "0.1"
+tokio = { version = "0.2", features = ["full"] }
 hyper = "0.12"
 
 # env-logger example
