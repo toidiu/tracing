@@ -6,11 +6,11 @@ edition = "2018"
 
 [features]
 default = []
-broken = ["tower-h2"]
+# broken = ["tower-h2"]
 
 [dependencies]
 # optional dependencies cannot be dev-dependencies.
-tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git", optional = true }
+# tower-h2 = { git = "https://github.com/tower-rs/tower-h2.git", optional = true }
 
 [dev-dependencies]
 
@@ -19,40 +19,43 @@ tracing = "0.1"
 tracing-core = "0.1"
 tracing-tower = { version = "0.1.0", path = "../tracing-tower" }
 tracing-subscriber = { version = "0.2.0-alpha.1", path = "../tracing-subscriber", features = ["json", "chrono"] }
-tracing-futures = { version = "0.2.0", path = "../tracing-futures", features = ["futures-01"] }
-tracing-attributes =  "0.1.2"
+tracing-futures = { version = "0.2.0", path = "../tracing-futures", features = ["std-future"] }
+tracing-attributes =  "0.1.6"
 tracing-log = { path = "../tracing-log", version = "0.1.1", features = ["env_logger"] }
 tracing-serde = { path = "../tracing-serde" }
 
 # serde example
 serde_json = "1.0"
 
-futures = "0.1"
+futures = "0.3"
 # tokio = "0.1"
 tokio = { version = "0.2", features = ["full"] }
-hyper = "0.12"
+hyper = "0.13.1"
 
-# env-logger example
-env_logger = "0.6"
+# # env-logger example
+# env_logger = "0.6"
 
 # tower examples
-bytes = "0.4"
-h2 = "0.1.11"
-string = { git = "https://github.com/carllerche/string" }
-http = "0.1"
-tokio-current-thread = "0.1.1"
-tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
-tokio-io = "0.1"
-tokio-tcp = "0.1"
-tokio-buf = "0.1"
-tower = "0.1"
-tower-service = "0.2"
-tower-util = "0.1"
-tower-hyper = "0.1"
-tower-http-util = "0.1"
-rand = "0.7"
+# bytes = "0.4"
+# h2 = "0.1.11"
+# string = { git = "https://github.com/carllerche/string" }
+http = "0.2"
+# tokio-current-thread = "0.1.1"
+# tokio-connect = { git = "https://github.com/carllerche/tokio-connect" }
+# tokio-io = "0.1"
+# tokio-tcp = "0.1"
+# tokio-buf = "0.1"
+tower = "0.3"
+# tower-service = "0.2"
+# tower-util = "0.1"
+# tower-hyper = "0.1"
+# tower-http-util = "0.1"
+# rand = "0.7"
 
 # sloggish example
 ansi_term = "0.11"
 humantime = "1.2"
 log = "0.4"
+
+# proxy_server example
+clap = "2.33"
