@@ -66,10 +66,10 @@ async fn transfer(
         .instrument(debug_span!("server_to_client"));
 
     let (client_to_server, server_to_client) = try_join(client_to_server, server_to_client).await?;
-    info!(
-        client_to_server, server_to_client,
-        "transfer completed",
-    );
+    // info!(
+    //     client_to_server, server_to_client,
+    //     "transfer completed",
+    // );
 
     Ok(())
 }
